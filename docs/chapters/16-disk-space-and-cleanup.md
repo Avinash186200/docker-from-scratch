@@ -21,7 +21,7 @@ On Windows and macOS everything is inside **one big file** on your host drive.
 docker system df          # images, containers, volumes, build cache
 docker system df -v       # per image / container / volume
 docker ps -a --filter status=exited
-docker volume ls -f dangling=true | wc -l
+docker volume ls -q -f dangling=true | wc -l
 ```
 
 Or let the repo's helper read it and suggest an order:
@@ -32,8 +32,8 @@ docker system df | python -m dockerhygiene.cli df
 
 Read the RECLAIMABLE column with care. **Stopped containers keep their images and
 volumes "in use"**, so reclaimable looks small until the containers are gone. In
-the case study, images showed 23 GB reclaimable out of 56.5 GB, but after removing
-55 stopped containers, all of it could go.
+the case study, images showed 23 GB reclaimable out of 56.5 GB; after removing 55
+stopped containers, `image prune -a` reclaimed 44.08 GB.
 
 ## Step 2: clean, safest first
 
@@ -47,7 +47,13 @@ the case study, images showed 23 GB reclaimable out of 56.5 GB, but after removi
 | `docker volume prune -a` | Unused volumes, **named ones too** | High: this is where databases live. Check first. |
 | `docker system prune` | Stopped containers, unused networks, dangling images, build cache | Low. Add `-a` for all unused images, `--volumes` for anonymous volumes. |
 
-Useful filters: `--filter until=168h` (older than 7 days), `--filter label=...`.
+Useful filters: `--filter until=168h` (older than 7 days) works for containers,
+images, networks and build cache; `volume prune` only accepts `label` filters.
+
+**Watch out for databases started without a named volume.** Images like `postgres`
+declare a `VOLUME`, so `docker run postgres` without `-v` stores its data in an
+anonymous volume. Once that container is removed, `docker volume prune` deletes the
+data. Name the volumes you care about.
 
 Before deleting named volumes, ask: is this data anywhere else? Local dev databases
 usually are not backed up. If you need one, dump it first

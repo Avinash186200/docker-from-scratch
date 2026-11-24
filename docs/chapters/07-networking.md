@@ -10,7 +10,7 @@ your laptop. This one fact explains most beginner networking bugs.
 |---|---|---|
 | `bridge` (default) | A private network on the host. Containers get private IPs. Outbound traffic goes through NAT. | Most cases. |
 | User-defined bridge (`docker network create app-net`) | Same, plus **DNS by container name**. | Whenever containers talk to each other. |
-| `host` | The container uses the host's network directly. No isolation, no `-p` needed. | Linux only, for special performance or networking cases. |
+| `host` | The container uses the host's network directly. No isolation, no `-p` needed. | Special performance or networking cases. Native on Linux; recent Docker Desktop versions offer it only as an opt-in setting. |
 | `none` | No network. | Batch jobs that must not reach anything. |
 | `overlay` | Spans several hosts. | Swarm. Kubernetes uses its own networking (CNI). |
 
@@ -49,8 +49,8 @@ On Docker Desktop, `host.docker.internal` resolves to your laptop. On Linux, add
 ```bash
 docker network ls
 docker network inspect app-net            # which containers, which IPs
-docker exec -it web sh -c 'wget -qO- http://db:5432 || true'
-docker run --rm -it --network container:web nicolaka/netshoot   # tools, same namespace
+docker run --rm --network app-net alpine:3.20 nslookup db   # does the name resolve?
+docker run --rm -it --network container:db nicolaka/netshoot   # tools, in db's network namespace
 ```
 
 Questions to ask, in order:

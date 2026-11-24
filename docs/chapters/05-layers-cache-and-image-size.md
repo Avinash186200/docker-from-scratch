@@ -27,7 +27,9 @@ Two facts follow from this:
 
 2. **Layers are shared.** Ten images on the same base store the base once. This is
    also why `docker system df` can show "reclaimable" numbers that look smaller
-   than the sizes: shared layers are still in use.
+   than the sizes. (RECLAIMABLE is the space Docker could free right now, because
+   nothing is using it. Layers shared with an image that a container still uses
+   are not counted.)
 
 See the layers of any image with `docker history IMAGE`.
 
@@ -97,7 +99,10 @@ The Python version of this pattern is in
 
 ## Real numbers from this repo
 
-Measured on Docker Desktop 4.90.0 (engine 29.7.2), with the same tiny app:
+Measured on Docker Desktop 4.90.0 (engine 29.7.2), with the same tiny app. This
+engine uses the containerd image store (the default on current Docker Desktop),
+where `inspect .Size` is the compressed download size; on the older overlay2 store
+it is the unpacked size instead.
 
 | Image | Size on disk (`docker images`) | Download size (`docker image inspect .Size`) |
 |---|---|---|

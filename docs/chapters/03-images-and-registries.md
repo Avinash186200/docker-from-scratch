@@ -22,7 +22,7 @@ release; it is not special and not guaranteed to be newest.
 
 A real example: when lab 3 in this course ran in November 2026, `FROM python`
 (no tag, so `latest`) gave **Python 3.15.2**. A Dockerfile written a year earlier
-with the same line got a different major runtime without anyone changing a file.
+with the same line gets a different Python version without anyone changing a file.
 
 | Use | Pin to |
 |---|---|

@@ -31,7 +31,8 @@ def test_multistage_example_is_clean():
     assert check(text, EXAMPLES) == []
 
 
-def test_bad_example_hits_every_teaching_rule():
+def test_bad_example_hits_every_rule_except_dockerignore():
+    # DH011 (.dockerignore) is about the folder, not the file: tested separately.
     text = (EXAMPLES / "bad.Dockerfile").read_text()
     found = set(rules(text, EXAMPLES))
     assert {"DH001", "DH002", "DH003", "DH004", "DH005", "DH006", "DH007", "DH008",
@@ -73,6 +74,13 @@ def test_dh002_only_final_stage_counts():
     assert "DH002" in rules(text)
 
 
+def test_dh002_stage_inherits_user_from_parent_stage():
+    text = "FROM python:3.11-slim AS base\nUSER 10001\nFROM base\nCMD [\"x\"]\n"
+    assert "DH002" not in rules(text)
+    text_root = "FROM python:3.11-slim AS base\nFROM base\nCMD [\"x\"]\n"
+    assert "DH002" in rules(text_root)
+
+
 def test_dh003_add_vs_copy():
     assert "DH003" in rules("FROM a:1\nADD app.py /app/\n" + GOOD_TAIL)
     assert "DH003" not in rules("FROM a:1\nADD https://example.com/x.tgz /tmp/\n" + GOOD_TAIL)
@@ -97,6 +105,10 @@ def test_dh004_dh005_apt():
         ("ARG API_KEY", False),          # declared without a value: fine
         ("ENV PASSWORD_FILE=", False),   # empty value
         ("ENV LOG_LEVEL=info", False),
+        ("ENV POSTGRES_PASSWORD_FILE=/run/secrets/db_password", False),  # the safe pattern
+        ("ENV DB_PASSWORD=/run/secrets/db", False),
+        ("ARG VERSION=1 API_KEY=abc", True),  # second pair on one line
+        ("ARG A B C", False),
     ],
 )
 def test_dh006_secrets(line, flagged):
@@ -114,6 +126,11 @@ def test_dh008_pip_cache():
     assert "DH008" not in rules("FROM a:1\nRUN pip install --no-cache-dir flask==3.0.0\n" + GOOD_TAIL)
     assert "DH008" not in rules(
         "FROM a:1\nRUN --mount=type=cache,target=/root/.cache/pip pip install flask==3.0.0\n" + GOOD_TAIL)
+    assert "DH008" not in rules(
+        "FROM a:1\nENV PIP_NO_CACHE_DIR=1\nRUN pip install flask==3.0.0\n" + GOOD_TAIL)
+    # the setting does not carry into a new, unrelated stage
+    assert "DH008" in rules(
+        "FROM a:1 AS one\nENV PIP_NO_CACHE_DIR=1\nFROM a:1\nRUN pip install flask==3.0.0\n" + GOOD_TAIL)
 
 
 def test_dh009_copy_order():

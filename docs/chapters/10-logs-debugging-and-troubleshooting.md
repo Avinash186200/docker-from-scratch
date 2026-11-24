@@ -32,7 +32,7 @@ container, in Compose, or for the whole engine in `daemon.json`:
 | `docker stats` | Live CPU, memory, network, I/O per container. |
 | `docker top C` | Processes inside. |
 | `docker events` | Live stream of what the engine is doing. |
-| `docker cp C:/path ./local` | Copy a file out (works on stopped containers too). |
+| `docker cp CONTAINER:/path ./local` | Copy a file out (works on stopped containers too). |
 | `docker debug C` | (Docker Desktop) a shell with tools, even for distroless images. |
 
 ## Exit codes

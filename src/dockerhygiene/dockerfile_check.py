@@ -94,6 +94,9 @@ def check(text: str, context_dir: Path | None = None) -> list[Finding]:
     instructions = parse(text)
     findings: list[Finding] = []
     stages: set[str] = set()
+    stage_users: dict[str, str | None] = {}
+    current_stage: str | None = None
+    pip_cache_off = False
     last_from_line = 0
     user_in_final_stage: str | None = None
     has_healthcheck = False
@@ -105,12 +108,17 @@ def check(text: str, context_dir: Path | None = None) -> list[Finding]:
         if kw == "FROM":
             image, alias = _from_image(args)
             last_from_line = ins.line
-            user_in_final_stage = None
             copied_all_at = None
             name = image.lower()
             is_stage = name in stages
+            # A stage built FROM an earlier stage inherits its USER and ENV.
+            user_in_final_stage = stage_users.get(name) if is_stage else None
+            if not is_stage:
+                pip_cache_off = False
+            current_stage = alias
             if alias:
                 stages.add(alias)
+                stage_users[alias] = user_in_final_stage
             if name == "scratch" or is_stage or "$" in image or "@sha256:" in image:
                 continue
             last_part = image.rsplit("/", 1)[-1]
@@ -124,6 +132,8 @@ def check(text: str, context_dir: Path | None = None) -> list[Finding]:
 
         elif kw == "USER":
             user_in_final_stage = args.split(":")[0].strip()
+            if current_stage:
+                stage_users[current_stage] = user_in_final_stage
 
         elif kw == "ADD":
             sources = [t for t in args.split() if not t.startswith("--")][:-1]
@@ -147,7 +157,7 @@ def check(text: str, context_dir: Path | None = None) -> list[Finding]:
                         "Remove /var/lib/apt/lists/* in the SAME RUN. Deleting it in a later "
                         "layer does not make the image smaller."))
             if (re.search(r"\bpip3?\s+install\b", args) and "--no-cache-dir" not in args
-                    and "--mount=type=cache" not in args):
+                    and "--mount=type=cache" not in args and not pip_cache_off):
                 findings.append(Finding("DH008", "warning", ins.line,
                     "pip keeps a download cache inside the layer. Use --no-cache-dir (or a "
                     "BuildKit cache mount)."))
@@ -165,7 +175,12 @@ def check(text: str, context_dir: Path | None = None) -> list[Finding]:
 
         elif kw in ("ENV", "ARG"):
             for name, value in _assignments(kw, args):
-                if _SECRET_NAME.search(name) and value:
+                if name.upper() == "PIP_NO_CACHE_DIR" and value.lower() in ("1", "true", "on", "yes"):
+                    pip_cache_off = True
+                # NAME_FILE / NAME_PATH point at a secret file: that is the safe pattern.
+                if (_SECRET_NAME.search(name) and value
+                        and not re.search(r"_(FILE|PATH|DIR)$", name, re.I)
+                        and not value.startswith("/run/secrets/")):
                     findings.append(Finding("DH006", "error", ins.line,
                         f"{kw} {name} puts a secret into the image history, where anyone with "
                         "the image can read it ('docker history'). Use a BuildKit secret "
@@ -203,11 +218,12 @@ def check(text: str, context_dir: Path | None = None) -> list[Finding]:
 def _assignments(keyword: str, args: str) -> list[tuple[str, str]]:
     """Return (name, value) pairs from ENV or ARG arguments."""
     args = args.strip()
-    if keyword == "ARG":
-        name, _, value = args.partition("=")
-        return [(name.strip(), value.strip())]
     if not args:
         return []
+    if keyword == "ARG":
+        # ARG can declare several names: ARG A=1 B C="x y"
+        return [(name, value.strip("'\""))
+                for name, value in re.findall(r'(\w+)(?:=("[^"]*"|\'[^\']*\'|\S*))?', args)]
     if "=" not in args.split(None, 1)[0]:
         # legacy form: ENV NAME value
         parts = args.split(None, 1)

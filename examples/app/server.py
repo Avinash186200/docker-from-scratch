@@ -5,7 +5,7 @@ Endpoints:
     GET /health   -> 200 "ok"
 
 It handles SIGTERM, so 'docker stop' shuts it down at once instead of waiting
-10 seconds for SIGKILL (see chapter 14).
+for the stop timeout and SIGKILL (see chapter 14).
 """
 
 from __future__ import annotations

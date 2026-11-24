@@ -21,25 +21,40 @@
 
 ## Walkthrough of the example
 
-The repo's [`examples/Dockerfile`](../../examples/Dockerfile), line by line:
+The repo's [`examples/Dockerfile`](../../examples/Dockerfile), line by line.
+Note: a Dockerfile comment must start its own line. There are no comments at the
+end of an instruction; `FROM python:3.11-slim  # base` is a parse error.
 
 ```dockerfile
-# syntax=docker/dockerfile:1        # use the current Dockerfile syntax (BuildKit)
-FROM python:3.11-slim                # pinned, small base
+# syntax=docker/dockerfile:1
+# (first line: use the current Dockerfile syntax, BuildKit)
+
+# pinned, small base
+FROM python:3.11-slim
 LABEL org.opencontainers.image.source="https://github.com/..."
+
+# unbuffered = logs show up live
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PORT=8080 DATA_DIR=/data         # unbuffered = logs show up live
+    PORT=8080 DATA_DIR=/data
+
+# one RUN = one layer
 RUN groupadd --system --gid 10001 app \
  && useradd --system --uid 10001 --gid app --no-create-home app \
- && mkdir -p /data && chown app:app /data   # one RUN = one layer
+ && mkdir -p /data && chown app:app /data
 WORKDIR /app
-COPY --chown=app:app app/ ./         # only the app folder
-USER 10001:10001                     # numeric: never root, and verifiable
+
+# only the app folder
+COPY --chown=app:app app/ ./
+
+# numeric user id: never root, and checkable by Kubernetes
+USER 10001:10001
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD ["python", "-c", "...urlopen('http://127.0.0.1:8080/health')..."]
-CMD ["python", "server.py"]          # exec form: the app is PID 1
+
+# exec form: the app runs as PID 1 (the container's main process, chapter 14)
+CMD ["python", "server.py"]
 ```
 
 Build and run it:

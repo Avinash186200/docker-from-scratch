@@ -358,7 +358,7 @@ then compact the virtual disk, after `fstrim`, or the host never gets the space
 back. ([ch 16](chapters/16-disk-space-and-cleanup.md))
 
 **72. Tell me about a Docker problem you solved.**
-"My laptop's C: drive hit zero free space and even PowerShell could not start.
+"My laptop's C: drive got down to 0.2 GB free and even PowerShell could not start.
 Docker was using 133 GB but was broken: every command gave an input/output error,
 because its virtual disk could not grow and Linux had made it read-only. I freed
 safe caches first, restarted Docker and WSL so the disk was healthy, and checked

@@ -12,6 +12,10 @@
 #          (keeps up to 20GB of recent cache), unused anonymous volumes
 #   all  : safe + every unused image + every unused volume INCLUDING NAMED ONES
 #          (named volumes often hold local databases: back them up first)
+#
+# Warning: even "safe" deletes the anonymous volumes of stopped containers. A
+# database started without a named volume (docker run postgres, no -v) keeps its
+# data in such a volume, and it will be gone.
 set -euo pipefail
 
 level="safe"
@@ -20,10 +24,12 @@ cache_keep="20GB"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --level) level="${2:-}"; shift 2 ;;
+    --level|--keep-cache)
+      if [[ $# -lt 2 ]]; then echo "$1 needs a value" >&2; exit 2; fi
+      if [[ "$1" == "--level" ]]; then level="$2"; else cache_keep="$2"; fi
+      shift 2 ;;
     --yes) yes="yes"; shift ;;
-    --keep-cache) cache_keep="${2:-}"; shift 2 ;;
-    -h|--help) sed -n '2,15p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,19p' "$0"; exit 0 ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
 done
@@ -52,7 +58,8 @@ echo
 echo "Before:"
 docker system df
 echo
-echo "Would remove:"
+echo "Would remove (image and volume counts are lower bounds: removing stopped"
+echo "containers first frees more of both):"
 printf '  stopped containers      : %s\n' "$(docker ps -aq --filter status=exited --filter status=created | count)"
 printf '  dangling images         : %s\n' "$(docker images -q --filter dangling=true | count)"
 printf '  build cache             : older than 168h, keeping up to %s\n' "$cache_keep"

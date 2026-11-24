@@ -70,11 +70,14 @@ Commands to reproduce are in the [labs](labs/README.md).
 
 **Base image choice** (lab 2, [chapter 5](docs/chapters/05-layers-cache-and-image-size.md)):
 
-| Image | On disk | Download (compressed) |
+| Image | On disk | Download (compressed)* |
 |---|---|---|
 | Same app on `python:3.11` | 1.6 GB | 410 MB |
 | [`examples/Dockerfile`](examples/Dockerfile) on `python:3.11-slim` | 187 MB | 45.6 MB |
 | [`examples/multistage.Dockerfile`](examples/multistage.Dockerfile) | 224 MB | 53.3 MB |
+
+\* `docker image inspect .Size` with the containerd image store, the default on
+current Docker Desktop.
 
 The slim base did the work. Multi-stage made *this* image bigger, because a
 pure-Python app has no build tools to leave behind. The chapter explains when it
@@ -93,8 +96,8 @@ does help.
 | | Before | After |
 |---|---|---|
 | C: drive free | 0.2 GB | 159 GB |
-| Data inside Docker | 148.7 GB (62 images, 55 stopped containers, 270 volumes, 63.6 GB build cache) | 0 B |
-| `docker_data.vhdx` after prune + compact | 129.8 GB → 68.1 GB | → 3.8 GB once `fstrim` ran first |
+| Data inside Docker (`docker system df`) | 148.7 GB (62 images, 55 stopped containers, 270 volumes, 63.6 GB build cache) | 0 B |
+| `docker_data.vhdx` on the host | 129.8 GB | 68.1 GB after compacting; **3.8 GB** after `fstrim` + compacting |
 
 **Teaching linter** on the broken example:
 
@@ -102,8 +105,12 @@ does help.
 $ python -m dockerhygiene.cli check examples/bad.Dockerfile
 examples/bad.Dockerfile:4: DH001 [error] 'python' has no tag, so it means :latest. ...
 examples/bad.Dockerfile:4: DH002 [error] The final stage runs as root. ...
+examples/bad.Dockerfile:4: DH010 [info] No HEALTHCHECK. ...
 examples/bad.Dockerfile:5: DH006 [error] ENV API_KEY puts a secret into the image history ...
-... 10 findings, exit code 1. examples/Dockerfile: no findings.
+... (10 findings in total, exit code 1)
+
+$ python -m dockerhygiene.cli check examples/Dockerfile
+examples/Dockerfile: no findings
 ```
 
 ## Key concepts

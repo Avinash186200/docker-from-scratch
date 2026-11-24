@@ -37,7 +37,7 @@ def test_plan_removes_stopped_containers_first():
     assert "stopped container" in steps[0].reason
     commands = " ".join(s.command for s in steps)
     assert "builder prune --max-used-space 20GB" in commands
-    assert "image prune" in commands and "volume prune" in commands
+    assert "image prune -a" in commands and "volume prune -a" in commands
 
 
 def test_build_cache_step_keeps_a_budget():

@@ -1,14 +1,15 @@
 # 18. Case study: the day Docker filled my C: drive
 
 This is a real incident from my Windows 11 dev laptop (Docker Desktop 4.90.0,
-WSL 2 backend, engine 29.7.2). All numbers are copied from the commands I ran.
+WSL 2 backend, engine 29.7.2). All numbers are copied from the commands I ran;
+where I am inferring a cause, the text says so.
 
 ## Summary
 
 | | Before | After |
 |---|---|---|
 | C: drive free | **0.2 GB** of 335 GB | **159 GB** |
-| Data inside Docker (`docker system df`) | 148.7 GB | 0 B |
+| Data inside Docker (`docker system df`) | 148.7 GB | 0 B (prune commands reported 136.2 GB reclaimed; shared layers are counted differently) |
 | Docker's virtual disk file (`docker_data.vhdx`) | 129.8 GB | **3.8 GB** |
 
 ## What I saw
@@ -47,9 +48,11 @@ WSL 2 backend, engine 29.7.2). All numbers are copied from the commands I ran.
    ```
 
 5. **Decide what is safe, before deleting.** I went through it item by item:
-   - 55 stopped containers: leftovers from test runs. Two "running" ones were test
-     shells I had started that morning, with nothing stored inside.
-   - 260 of 270 volumes were **anonymous**, created by test runs over three weeks.
+   - 55 stopped containers: leftovers from test runs. Before the restart,
+     `docker ps` had shown two containers running; they were test shells I had
+     started that morning, with nothing stored inside, and the restart stopped them.
+   - 260 of 270 volumes were **anonymous**, created by test runs between mid-October
+     and early November.
    - The named volumes were the same local stack under **three Compose project
      names**: the old folder name, the new folder name, and a review copy. The real
      dev and production databases live in a managed cloud database, so the local
@@ -81,7 +84,7 @@ flowchart TD
   C --> D["vhdx cannot grow"]
   D --> E["ext4 inside the VM gets I/O errors<br/>and remounts read-only"]
   E --> F["Every docker command fails<br/>'input/output error'"]
-  C --> G["Windows cannot grow the page file<br/>apps crash, PowerShell cannot start"]
+  C --> G["Most likely: Windows cannot grow the page file<br/>apps crash, PowerShell cannot start"]
 ```
 
 The real cause was not one big thing. It was many small things that nobody
@@ -93,12 +96,14 @@ stack, 63.6 GB of build cache, on the system drive, with no limit.
 1. **Docker never cleans up on its own.** Except for build cache GC, everything
    stays until you remove it.
 2. **Stopped containers hide how much you can free.** "Reclaimable" for images was
-   23 GB of 56.5 GB; after removing the stopped containers, all of it could go.
+   23 GB of 56.5 GB; after removing the stopped containers, `image prune -a`
+   reclaimed 44.08 GB.
 3. **`volume prune` changed in Docker 23.** It removes only anonymous volumes now.
    Named volumes need `-a`, and that is where databases live, so check first.
-4. **Build cache GC was on and still grew.** Docker Desktop's default config already
-   had `builder.gc` enabled with a 20 GB budget, yet build cache showed 63.6 GB, of
-   which only 7.8 GB was reclaimable while images still used it. Do not assume the
+4. **Build cache GC was on and the cache still showed 63.6 GB.** Docker Desktop's
+   default config already had `builder.gc` enabled with `defaultKeepStorage: 20GB`,
+   yet `docker system df` showed 63.6 GB of build cache (7.8 GB of it marked
+   reclaimable). I did not pin down why. The lesson stands: do not assume the
    default policy keeps you safe; look at `docker system df`.
 5. **On Docker Desktop, pruning is half the job.** The virtual disk file only
    shrinks when you compact it, and compaction works much better after `fstrim`
@@ -121,7 +126,7 @@ stack, 63.6 GB of build cache, on the system drive, with no limit.
 
 ## How I tell this story in an interview
 
-"My laptop's C: drive hit zero free space. VS Code kept crashing and even
+"My laptop's C: drive got down to 0.2 GB free. VS Code kept crashing and even
 PowerShell could not start. I first freed about 30 GB of safe caches so the machine
 worked again. Then I found Docker was using 133 GB, but Docker itself was broken:
 every command gave an input/output error, because its virtual disk could not grow

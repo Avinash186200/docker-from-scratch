@@ -57,7 +57,7 @@ ones unless you add `-a`. In the [case study](18-case-study-disk-full.md), 260 o
 If the container runs as user 10001 and writes to a volume, the folder must be
 writable by 10001. A **new, empty named volume** is filled with the image's
 contents at that path, ownership included. That is why the example Dockerfile does
-`mkdir -p /data && chown app:app /data` before `USER app`. With bind mounts, the
+`mkdir -p /data && chown app:app /data` before `USER 10001:10001`. With bind mounts, the
 host folder's owner wins, so match the user id or set permissions on the host.
 
 ## Backing up a volume

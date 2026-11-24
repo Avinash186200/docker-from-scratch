@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # Multi-stage build: tools and caches stay in the "build" stage, only the result
-# is copied into the small runtime stage. Build from the examples/ folder:
-#   docker build -f multistage.Dockerfile -t hello-app:ms examples
+# is copied into the small runtime stage. Build from the repo root:
+#   docker build -f examples/multistage.Dockerfile -t hello-app:ms examples
 # Explained in docs/chapters/05-layers-cache-and-image-size.md.
 
 # ---------- stage 1: build ----------

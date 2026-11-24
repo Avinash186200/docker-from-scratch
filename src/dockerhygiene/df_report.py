@@ -10,7 +10,8 @@ Two input formats are accepted:
 2. JSON lines from ``docker system df --format '{{json .}}'``.
 
 The plan follows the order that actually frees space: stopped containers first
-(they pin images and volumes), then volumes, images and build cache.
+(they pin images and volumes), then build cache, then images, then volumes
+(last, because named volumes may hold data).
 """
 
 from __future__ import annotations
@@ -134,7 +135,7 @@ def plan(rows: list[DfRow], build_cache_keep_gb: float = 20.0) -> list[Step]:
                     "Start with dangling ones (no tag); add -a only if you can pull or rebuild "
                     "the rest."
                 ),
-                command="docker image prune   # then, if needed: docker image prune -a",
+                command="docker image prune -a   # dangling only: docker image prune",
                 frees_up_to=images.reclaimable,
                 destructive=True,
             )
@@ -150,7 +151,7 @@ def plan(rows: list[DfRow], build_cache_keep_gb: float = 20.0) -> list[Step]:
                     "'-a' also removes named ones. Named volumes often hold databases, so "
                     "check them before using -a."
                 ),
-                command="docker volume prune   # named volumes too: docker volume prune -a",
+                command="docker volume prune -a   # anonymous only: docker volume prune",
                 frees_up_to=volumes.reclaimable,
                 destructive=True,
             )
@@ -175,7 +176,7 @@ def render(rows: list[DfRow], steps: list[Step]) -> str:
     for i, step in enumerate(steps, 1):
         tag = "deletes data" if step.destructive else "cache only"
         lines.append(f"{i}. [{tag}] {step.command}")
-        lines.append(f"   frees up to {format_size(step.frees_up_to)}. {step.reason}")
+        lines.append(f"   frees up to {format_size(step.frees_up_to)} (the first command). {step.reason}")
     lines.append("")
     lines.append(
         "On Docker Desktop (Windows/macOS) pruning frees space inside the VM disk. "

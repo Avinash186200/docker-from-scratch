@@ -36,14 +36,14 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: .
           push: true
@@ -53,11 +53,12 @@ jobs:
 ```
 
 `cache-from` / `cache-to` keep the layer cache between CI runs, which are otherwise
-fresh machines with an empty cache.
+fresh machines with an empty cache. (Action versions were current in November 2026;
+check each action's releases page for the latest major version.)
 
-This repo's own [CI](../../.github/workflows/ci.yml) builds the example image,
-runs it, checks `/health`, checks that it runs as a non-root user, and lints every
-Dockerfile and script.
+This repo's own [CI](../../.github/workflows/ci.yml) builds both example images,
+runs them, checks `/health`, checks they run as a non-root user and stop cleanly on
+SIGTERM, and lints both example Dockerfiles and every script.
 
 ## Multi-platform images
 

@@ -6,7 +6,8 @@ volumes, secrets. One command starts all of it.
 ## The example file
 
 [`examples/compose.yaml`](../../examples/compose.yaml) runs the app, and Postgres
-under a profile:
+under a profile. Shortened here (the db's volume, secret and logging are in the
+full file):
 
 ```yaml
 name: hello
@@ -53,8 +54,9 @@ docker compose down -v            # ALSO removes the named volumes: data loss
 
 ### Project names prefix everything
 
-Compose names resources `<project>_<name>`. The project name defaults to the
-**folder name**. Rename or copy the folder and you get a new set of containers,
+Compose prefixes everything with the project name: volumes and networks are
+`<project>_<name>`, containers are `<project>-<service>-<n>`. The project name
+defaults to the **folder name**. Rename or copy the folder and you get a new set of containers,
 networks and **volumes**; the old ones stay behind. In the
 [case study](18-case-study-disk-full.md), one stack existed under three project
 names (old folder, new folder, a review copy), so its databases were on disk three

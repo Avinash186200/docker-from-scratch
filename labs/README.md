@@ -73,8 +73,9 @@ docker run --rm -i hadolint/hadolint < examples/bad.Dockerfile
 Rewrite it until both tools are quiet. Then compare with
 [`examples/Dockerfile`](../examples/Dockerfile).
 
-**See the leaked secret:** build the bad file (from the `examples/` folder, so the
-`COPY` and `requirements.txt` exist) and read the key back out of the image:
+**See the leaked secret:** build the bad file (with `examples/` as the context, so
+the `ADD` and `app/requirements.txt` paths exist) and read the key back out of the
+image:
 
 ```bash
 docker build -f examples/bad.Dockerfile -t leaky examples
@@ -88,13 +89,16 @@ The app counts hits in `/data/hits.txt`.
 
 ```bash
 docker volume create hello-data
-docker run -d --name h -p 127.0.0.1:8080:8080 -v hello-data:/data hello-app:1.0
+docker run -d --name hits -p 127.0.0.1:8080:8080 -v hello-data:/data hello-app:1.0
 curl -s http://127.0.0.1:8080/; curl -s http://127.0.0.1:8080/   # hit 1, hit 2
-docker rm -f h
-docker run -d --name h -p 127.0.0.1:8080:8080 -v hello-data:/data hello-app:1.0
+docker rm -f hits
+docker run -d --name hits -p 127.0.0.1:8080:8080 -v hello-data:/data hello-app:1.0
 curl -s http://127.0.0.1:8080/                                     # hit 3: data survived
-docker rm -f h
+docker rm -f hits
 ```
+
+(Container names need at least two characters on current Docker: `--name h` is
+rejected with "Invalid container name".)
 
 Now run the same without `-v`: the count restarts at 1 every time. Finally:
 
@@ -121,8 +125,8 @@ cp db_password.txt.example db_password.txt     # local only, ignored by git
 docker compose up -d --build
 docker compose ps
 curl -s http://127.0.0.1:8080/
-docker compose --profile db up -d
-docker compose exec db pg_isready -U postgres
+docker compose --profile db up -d --wait       # --wait: until healthchecks pass
+docker compose exec db pg_isready -U postgres  # accepting connections
 docker compose config | head -30               # the merged, final config
 docker volume ls | grep hello_                 # project name prefix
 docker compose --profile db down               # volumes kept
@@ -144,6 +148,9 @@ time docker stop ex; docker inspect -f 'exit={{.State.ExitCode}}' ex   # fast, e
 time docker stop sh; docker inspect -f 'exit={{.State.ExitCode}}' sh   # slow, exit=137
 docker logs ex | tail -1                                               # got signal 15
 docker rm ex sh
+# the same with an explicit 10 second grace period
+docker run -d --name sh10 hello-app:shellform; sleep 3
+time docker stop -t 10 sh10; docker rm sh10                            # ~10 s, exit=137
 ```
 
 **Memory limit:**
@@ -162,8 +169,11 @@ docker inspect -f 'OOMKilled={{.State.OOMKilled}}' oom; docker rm oom
 scripts/docker-disk-report.sh                 # what is using space
 docker system df | python -m dockerhygiene.cli df
 scripts/docker-cleanup.sh                     # dry run: nothing is deleted
-scripts/docker-cleanup.sh --level safe --yes  # stopped containers, dangling images, old build cache
-docker rmi hello-app:full hello-app:ms hello-app:shellform 2>/dev/null
+scripts/docker-cleanup.sh --level safe --yes  # stopped containers, dangling images,
+                                              # old build cache, unused anonymous volumes
+docker rmi hello-app:full hello-app:ms hello-app:shellform python nginx:1.27 alpine:3.20 \
+  curlimages/curl:8.10.1 2>/dev/null
+docker rm -f db 2>/dev/null; docker network rm app-net 2>/dev/null   # from chapter 7
 docker system df
 ```
 
