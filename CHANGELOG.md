@@ -19,5 +19,5 @@ uses [Semantic Versioning](https://semver.org/).
 - `dockerhygiene`: a teaching Dockerfile linter (11 rules) and a `docker system df`
   cleanup planner. Standard library only; 69 tests on Python 3.10-3.12.
 - Scripts: read-only disk report, dry-run-by-default cleanup, Windows vhdx compaction.
-- CI: tests, hadolint, shellcheck, PSScriptAnalyzer, compose validation, image
+- CI: tests on Python 3.10-3.12, hadolint, shellcheck, PSScriptAnalyzer, compose validation, image
   build with smoke test (non-root, health, clean SIGTERM stop), gitleaks.
