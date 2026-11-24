@@ -97,9 +97,16 @@ and then `exec "$@"`.
 ## Exec form vs shell form
 
 ```dockerfile
-CMD ["python", "server.py"]   # exec form: python is PID 1, gets signals
-CMD python server.py          # shell form: /bin/sh -c "python server.py" is PID 1
+# exec form: python is PID 1, gets signals
+CMD ["python", "server.py"]
+
+# shell form: /bin/sh -c "python server.py" is PID 1
+CMD python server.py
 ```
+
+(A trailing comment here would be worse than a style issue: `CMD ["python",
+"server.py"]  # note` is no longer valid JSON, so Docker silently treats the whole
+line as shell form.)
 
 With shell form, `docker stop` sends SIGTERM to the shell, which does not pass it
 on. Docker waits for the grace period and then SIGKILLs your app (exit code 137).

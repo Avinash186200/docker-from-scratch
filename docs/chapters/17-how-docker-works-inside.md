@@ -31,10 +31,11 @@ A container is a normal Linux process with limits on what it can see and use.
 You can see it from the host on Linux:
 
 ```bash
-docker run -d --name s alpine:3.20 sleep 1000
+docker run -d --name sleeper alpine:3.20 sleep 1000
 ps -ef | grep "sleep 1000"          # a normal process on the host
-docker top s                        # same process, as Docker sees it
-sudo ls -l /proc/$(docker inspect -f '{{.State.Pid}}' s)/ns   # its namespaces
+docker top sleeper                  # same process, as Docker sees it
+sudo ls -l /proc/$(docker inspect -f '{{.State.Pid}}' sleeper)/ns   # its namespaces
+docker rm -f sleeper
 ```
 
 ## OCI: the open standards

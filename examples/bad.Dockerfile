@@ -1,5 +1,5 @@
 # DO NOT COPY THIS FILE. It is the "spot the mistakes" exercise for lab 3.
-# Every line breaks a rule from the course. Run:
+# Almost every line breaks a rule from the course. Run:
 #   python -m dockerhygiene.cli check examples/bad.Dockerfile
 FROM python
 ENV API_KEY=replace-me

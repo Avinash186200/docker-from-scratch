@@ -32,6 +32,7 @@ for a local reverse proxy.
 ```bash
 docker network create app-net
 docker run -d --name db  --network app-net -e POSTGRES_PASSWORD=dev postgres:16-alpine
+sleep 5   # give Postgres a few seconds to start
 docker run --rm --network app-net postgres:16-alpine pg_isready -h db
 # db:5432 - accepting connections
 ```

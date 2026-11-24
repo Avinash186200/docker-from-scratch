@@ -29,7 +29,7 @@ while [[ $# -gt 0 ]]; do
       if [[ "$1" == "--level" ]]; then level="$2"; else cache_keep="$2"; fi
       shift 2 ;;
     --yes) yes="yes"; shift ;;
-    -h|--help) sed -n '2,19p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,18p' "$0"; exit 0 ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
 done

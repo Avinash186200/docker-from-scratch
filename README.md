@@ -128,8 +128,7 @@ Docker Desktop's virtual disk and why it does not shrink.
 git clone https://github.com/Avinash186200/docker-from-scratch.git
 cd docker-from-scratch
 
-# the course: start here
-# start with docs/README.md (or browse it on GitHub)
+# the course: start with docs/README.md (or browse it on GitHub)
 
 # the example app
 docker build -t hello-app:1.0 examples

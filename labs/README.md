@@ -62,7 +62,7 @@ Which steps re-ran?
 
 ## Lab 3: fix a bad Dockerfile
 
-[`examples/bad.Dockerfile`](../examples/bad.Dockerfile) breaks a rule on every line.
+[`examples/bad.Dockerfile`](../examples/bad.Dockerfile) breaks a rule on almost every line.
 
 ```bash
 pip install -e .
@@ -150,7 +150,8 @@ docker logs ex | tail -1                                               # got sig
 docker rm ex sh
 # the same with an explicit 10 second grace period
 docker run -d --name sh10 hello-app:shellform; sleep 3
-time docker stop -t 10 sh10; docker rm sh10                            # ~10 s, exit=137
+time docker stop -t 10 sh10                                            # ~10 s
+docker inspect -f 'exit={{.State.ExitCode}}' sh10; docker rm sh10      # exit=137
 ```
 
 **Memory limit:**

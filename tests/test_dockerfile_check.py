@@ -131,6 +131,14 @@ def test_dh008_pip_cache():
     # the setting does not carry into a new, unrelated stage
     assert "DH008" in rules(
         "FROM a:1 AS one\nENV PIP_NO_CACHE_DIR=1\nFROM a:1\nRUN pip install flask==3.0.0\n" + GOOD_TAIL)
+    # ...but a stage built FROM the stage that set it inherits it, even with another stage between
+    assert "DH008" not in rules(
+        "FROM a:1 AS one\nENV PIP_NO_CACHE_DIR=1\nFROM b:1 AS two\nFROM one\n"
+        "RUN pip install flask==3.0.0\n" + GOOD_TAIL)
+    # and a stage that did not set it does not get it from whichever stage came last
+    assert "DH008" in rules(
+        "FROM a:1 AS one\nFROM b:1 AS two\nENV PIP_NO_CACHE_DIR=1\nFROM one\n"
+        "RUN pip install flask==3.0.0\n" + GOOD_TAIL)
 
 
 def test_dh009_copy_order():

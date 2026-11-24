@@ -44,6 +44,7 @@ class Step:
     command: str
     frees_up_to: int
     destructive: bool
+    note: str = ""  # qualifies frees_up_to, e.g. "with -a"
 
 
 def parse_table(text: str) -> list[DfRow]:
@@ -135,9 +136,10 @@ def plan(rows: list[DfRow], build_cache_keep_gb: float = 20.0) -> list[Step]:
                     "Start with dangling ones (no tag); add -a only if you can pull or rebuild "
                     "the rest."
                 ),
-                command="docker image prune -a   # dangling only: docker image prune",
+                command="docker image prune   # all unused, if you can re-pull: docker image prune -a",
                 frees_up_to=images.reclaimable,
                 destructive=True,
+                note="with -a",
             )
         )
 
@@ -151,9 +153,10 @@ def plan(rows: list[DfRow], build_cache_keep_gb: float = 20.0) -> list[Step]:
                     "'-a' also removes named ones. Named volumes often hold databases, so "
                     "check them before using -a."
                 ),
-                command="docker volume prune -a   # anonymous only: docker volume prune",
+                command="docker volume prune   # named too, only after checking: docker volume prune -a",
                 frees_up_to=volumes.reclaimable,
                 destructive=True,
+                note="with -a",
             )
         )
     return steps
@@ -176,7 +179,8 @@ def render(rows: list[DfRow], steps: list[Step]) -> str:
     for i, step in enumerate(steps, 1):
         tag = "deletes data" if step.destructive else "cache only"
         lines.append(f"{i}. [{tag}] {step.command}")
-        lines.append(f"   frees up to {format_size(step.frees_up_to)} (the first command). {step.reason}")
+        qualifier = f" ({step.note})" if step.note else ""
+        lines.append(f"   frees up to {format_size(step.frees_up_to)}{qualifier}. {step.reason}")
     lines.append("")
     lines.append(
         "On Docker Desktop (Windows/macOS) pruning frees space inside the VM disk. "

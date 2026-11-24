@@ -95,6 +95,7 @@ def check(text: str, context_dir: Path | None = None) -> list[Finding]:
     findings: list[Finding] = []
     stages: set[str] = set()
     stage_users: dict[str, str | None] = {}
+    stage_pip: dict[str, bool] = {}
     current_stage: str | None = None
     pip_cache_off = False
     last_from_line = 0
@@ -113,12 +114,12 @@ def check(text: str, context_dir: Path | None = None) -> list[Finding]:
             is_stage = name in stages
             # A stage built FROM an earlier stage inherits its USER and ENV.
             user_in_final_stage = stage_users.get(name) if is_stage else None
-            if not is_stage:
-                pip_cache_off = False
+            pip_cache_off = stage_pip.get(name, False) if is_stage else False
             current_stage = alias
             if alias:
                 stages.add(alias)
                 stage_users[alias] = user_in_final_stage
+                stage_pip[alias] = pip_cache_off
             if name == "scratch" or is_stage or "$" in image or "@sha256:" in image:
                 continue
             last_part = image.rsplit("/", 1)[-1]
@@ -175,8 +176,11 @@ def check(text: str, context_dir: Path | None = None) -> list[Finding]:
 
         elif kw in ("ENV", "ARG"):
             for name, value in _assignments(kw, args):
-                if name.upper() == "PIP_NO_CACHE_DIR" and value.lower() in ("1", "true", "on", "yes"):
+                # pip treats any non-empty PIP_NO_CACHE_DIR as "no cache"
+                if name.upper() == "PIP_NO_CACHE_DIR" and value:
                     pip_cache_off = True
+                    if current_stage:
+                        stage_pip[current_stage] = True
                 # NAME_FILE / NAME_PATH point at a secret file: that is the safe pattern.
                 if (_SECRET_NAME.search(name) and value
                         and not re.search(r"_(FILE|PATH|DIR)$", name, re.I)

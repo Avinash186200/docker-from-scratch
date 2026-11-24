@@ -37,7 +37,11 @@ def test_plan_removes_stopped_containers_first():
     assert "stopped container" in steps[0].reason
     commands = " ".join(s.command for s in steps)
     assert "builder prune --max-used-space 20GB" in commands
-    assert "image prune -a" in commands and "volume prune -a" in commands
+    # the safe command comes first; -a is only offered as the follow-up
+    image = next(s for s in steps if "image prune" in s.command)
+    volume = next(s for s in steps if "volume prune" in s.command)
+    assert image.command.startswith("docker image prune   #") and image.note == "with -a"
+    assert volume.command.startswith("docker volume prune   #") and volume.note == "with -a"
 
 
 def test_build_cache_step_keeps_a_budget():
