@@ -1,0 +1,102 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install
+        run: pip install -e ".[dev]"
+      - name: Unit tests
+        run: pytest -q
+      - name: Teaching linter on the examples
+        run: |
+          dockerhygiene check examples/Dockerfile
+          dockerhygiene check examples/multistage.Dockerfile
+          # the broken example must fail
+          if dockerhygiene check examples/bad.Dockerfile; then
+            echo "bad.Dockerfile should have findings"; exit 1
+          fi
+      - name: Cleanup planner on the incident fixture
+        run: dockerhygiene df tests/fixtures/system_df_before.txt
+
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: hadolint
+        run: |
+          for f in examples/Dockerfile examples/multistage.Dockerfile; do
+            echo "== $f"
+            docker run --rm -i hadolint/hadolint:v2.12.0 < "$f"
+          done
+      - name: shellcheck
+        run: shellcheck scripts/*.sh
+      - name: PowerShell script analyzer
+        shell: pwsh
+        run: |
+          Install-Module PSScriptAnalyzer -Force -Scope CurrentUser
+          $r = Invoke-ScriptAnalyzer -Path scripts/shrink-docker-vhdx.ps1 -Severity Error,Warning
+          $r | Format-Table -AutoSize
+          if ($r) { exit 1 }
+      - name: compose file is valid
+        working-directory: examples
+        run: |
+          cp db_password.txt.example db_password.txt
+          docker compose config --quiet
+          docker compose --profile db config --quiet
+
+  image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build both example images
+        run: |
+          docker build -t hello-app:ci examples
+          docker build -f examples/multistage.Dockerfile -t hello-app:ci-ms examples
+      - name: Smoke test, non-root, health, clean stop
+        run: |
+          set -euo pipefail
+          for img in hello-app:ci hello-app:ci-ms; do
+            echo "== $img"
+            test "$(docker run --rm "$img" id -u)" = "10001"
+            docker run -d --name smoke -p 127.0.0.1:18080:8080 "$img"
+            for i in $(seq 1 30); do curl -fs http://127.0.0.1:18080/health && break; sleep 1; done
+            curl -fs http://127.0.0.1:18080/ | grep -q "hello from a container"
+            for i in $(seq 1 60); do
+              s=$(docker inspect -f '{{.State.Health.Status}}' smoke)
+              [ "$s" = healthy ] && break; sleep 1
+            done
+            test "$s" = healthy
+            docker stop -t 10 smoke
+            test "$(docker inspect -f '{{.State.ExitCode}}' smoke)" = "0"
+            docker logs smoke | grep -q "got signal 15"
+            docker rm smoke
+          done
+      - name: Image sizes (for the record)
+        run: docker images hello-app
+
+  secrets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

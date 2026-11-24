@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dockerhygiene"
+version = "1.0.0"
+description = "Helpers for the docker-from-scratch course: a disk cleanup planner and a teaching Dockerfile linter."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Avinash Mishra" }]
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+dockerhygiene = "dockerhygiene.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+pythonpath = ["src"]

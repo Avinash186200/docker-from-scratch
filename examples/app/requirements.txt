@@ -1,0 +1,2 @@
+# The demo app uses only the Python standard library.
+# In a real service, list pinned dependencies here, e.g.  fastapi==0.115.0

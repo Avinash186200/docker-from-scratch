@@ -1,0 +1,66 @@
+# Run from the examples/ folder:
+#   docker compose up -d --build          # app only
+#   docker compose --profile db up -d     # app + postgres
+#   docker compose down                   # stop and remove containers (keeps volumes)
+#   docker compose down -v                # ALSO deletes the named volumes (data loss!)
+# Explained in docs/chapters/08-docker-compose.md.
+
+name: hello
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: hello-app:1.0
+    ports:
+      - "127.0.0.1:8080:8080"     # bind to localhost only, not the whole network
+    environment:
+      GREETING: "hello from compose"
+    volumes:
+      - app-data:/data             # named volume: survives container re-creation
+    read_only: true                # root filesystem is read-only...
+    tmpfs:
+      - /tmp                       # ...except a small in-memory /tmp
+    cap_drop: [ALL]                # the app needs no Linux capabilities
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 128M             # over this, the kernel OOM-kills the app (exit 137)
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"            # without this, logs grow until the disk is full
+        max-file: "3"
+
+  db:
+    profiles: [db]                 # only starts with --profile db
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    secrets:
+      - db_password
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  app-data:
+  db-data:
+
+secrets:
+  db_password:
+    file: ./db_password.txt        # create it locally; never commit it (see .gitignore)

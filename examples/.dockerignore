@@ -1,0 +1,11 @@
+# Keep the build context small and free of secrets.
+.git
+**/__pycache__
+**/*.pyc
+**/.venv
+**/.env
+**/*.pem
+*.Dockerfile
+compose.yaml
+daemon.json
+db_password.txt*
