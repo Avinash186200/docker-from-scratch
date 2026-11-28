@@ -9,6 +9,10 @@ patterns and a real incident. 18 chapters, 8 hands-on labs, 78 interview questio
 from basic to advanced, a one-page cheatsheet, and small tested tools that go with
 the lessons.
 
+## Watch
+
+- Video walkthrough: [Docker for AI Engineers: Images, Containers, Compose, Deploys](https://youtu.be/i3KMQ2z-cVc)
+
 ## Scenario
 
 A team is moving its services to containers. Some engineers have never used Docker;
